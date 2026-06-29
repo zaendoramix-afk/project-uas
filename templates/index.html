@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing Studio</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📷</text></svg>">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    {% if error_message %}
+        <div class="toast toast-error">⚠️ {{ error_message }}</div>
+    {% endif %}
+    {% if success_message %}
+        <div class="toast toast-success">✅ {{ success_message }}</div>
+    {% endif %}
+
+    <header>
+        <h1>Image Processing Studio</h1>
+        <div class="header-tools">
+            <form action="/" method="POST" enctype="multipart/form-data" id="upload-form">
+                <input type="hidden" name="action" value="upload">
+                <input type="file" name="image" id="upload-input" onchange="document.getElementById('upload-form').submit()">
+            </form>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('upload-input').click()">🖼️ Post Image</button>
+            
+            {% if has_result %}
+                <a href="{{ url_for('download') }}" class="btn btn-primary">📥 Unduh</a>
+            {% endif %}
+            
+            {% if can_chain %}
+                <form action="/" method="POST" style="display: inline;">
+                    <input type="hidden" name="action" value="use_result">
+                    <button type="submit" class="btn btn-success">🥞 Tumpuk Efek</button>
+                </form>
+            {% endif %}
+
+            <form action="/" method="POST" style="display: inline;">
+                <input type="hidden" name="action" value="reset">
+                <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="workspace">
+        
+        <aside class="control-sidebar">
+            <div class="panel-heading">PERKAKAS CITRA DIGITAL</div>
+            
+            <div class="panel-tabs">
+                <button type="button" class="tab-link active" onclick="switchTab(event, 'warna')">🎨 Warna</button>
+                <button type="button" class="tab-link" onclick="switchTab(event, 'filter')">✨ Filter</button>
+                <button type="button" class="tab-link" onclick="switchTab(event, 'geometri')">📐 Geometri</button>
+                <button type="button" class="tab-link" onclick="switchTab(event, 'analisis')">📊 Analisis</button>
+            </div>
+
+            <div class="sidebar-scroll-wrapper">
+                
+                <div class="tab-content active" id="warna">
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">🎨 Operasi Warna Dasar</div>
+                        <div class="control-grid">
+                            <form action="/" method="POST"><input type="hidden" name="action" value="grayscale"><button type="submit" class="btn">Grayscale</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="negative"><button type="submit" class="btn">Negative</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="sketch"><button type="submit" class="btn">Sketch</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="emboss"><button type="submit" class="btn">Emboss</button></form>
+                        </div>
+                        <form action="/" method="POST" class="parameter-input" style="margin-top: 4px;">
+                            <input type="hidden" name="action" value="sepia">
+                            <button type="submit" class="btn btn-secondary">Sepia Retro</button>
+                        </form>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="binary">
+                            <div class="label-container">
+                                <label>Binarization Threshold</label>
+                                <span class="param-value" id="thresh-val">127</span>
+                            </div>
+                            <input type="range" name="threshold" class="forge-range" min="0" max="255" value="127" oninput="document.getElementById('thresh-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Ubah Biner</button>
+                        </form>
+                    </div>
+
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">🎛️ Kecerahan, Kontras & Saturasi</div>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="brightness">
+                            <div class="label-container">
+                                <label>Brightness</label>
+                                <span class="param-value" id="bright-val">0</span>
+                            </div>
+                            <input type="range" name="brightness_value" class="forge-range" min="-100" max="100" value="0" oninput="document.getElementById('bright-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Ubah Kecerahan</button>
+                        </form>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="contrast">
+                            <div class="label-container">
+                                <label>Contrast Factor</label>
+                                <span class="param-value" id="contrast-val">1.0</span>
+                            </div>
+                            <input type="range" name="contrast_value" class="forge-range" min="0.0" max="3.0" step="0.1" value="1.0" oninput="document.getElementById('contrast-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Ubah Kontras</button>
+                        </form>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="saturation">
+                            <div class="label-container">
+                                <label>Saturation Factor</label>
+                                <span class="param-value" id="sat-val">1.0</span>
+                            </div>
+                            <input type="range" name="saturation_value" class="forge-range" min="0.0" max="3.0" step="0.1" value="1.0" oninput="document.getElementById('sat-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Ubah Saturasi</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="filter">
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">✨ Filter Spasial & Konvolusi</div>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="blur">
+                            <div class="label-container">
+                                <label>Blur Strength</label>
+                                <span class="param-value" id="blur-val">15</span>
+                            </div>
+                            <input type="range" name="blur_strength" class="forge-range" min="3" max="50" value="15" oninput="document.getElementById('blur-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Terapkan Blur</button>
+                        </form>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="sharpen">
+                            <div class="label-container">
+                                <label>Sharpen Strength</label>
+                                <span class="param-value" id="sharp-val">1.0</span>
+                            </div>
+                            <input type="range" name="sharpen_strength" class="forge-range" min="0.0" max="2.0" step="0.1" value="1.0" oninput="document.getElementById('sharp-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Pertajam Gambar</button>
+                        </form>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="vignette">
+                            <div class="label-container">
+                                <label>Vignette Strength</label>
+                                <span class="param-value" id="vig-val">1.0</span>
+                            </div>
+                            <input type="range" name="vignette_strength" class="forge-range" min="0.0" max="3.0" step="0.1" value="1.0" oninput="document.getElementById('vig-val').innerText = this.value">
+                            <button type="submit" class="btn btn-primary">Terapkan Vignette</button>
+                        </form>
+                    </div>
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">🔍 Deteksi Tepi (Edge Detection)</div>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="edge">
+                            <div class="control-grid" style="margin-bottom: 4px;">
+                                <div>
+                                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Thresh 1</label>
+                                    <input type="number" name="threshold1" value="100" class="input-forge-number">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Thresh 2</label>
+                                    <input type="number" name="threshold2" value="200" class="input-forge-number">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Canny Edge Detection</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="geometri">
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">📐 Rotasi & Pembalikan</div>
+                        <div class="control-grid">
+                            <form action="/" method="POST"><input type="hidden" name="action" value="rotate"><input type="hidden" name="angle" value="90"><button type="submit" class="btn">Putar 90°</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="rotate"><input type="hidden" name="angle" value="180"><button type="submit" class="btn">Putar 180°</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="flip_h"><button type="submit" class="btn">Cermin Horisontal</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="flip_v"><button type="submit" class="btn">Cermin Vertikal</button></form>
+                        </div>
+                    </div>
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">🔍 Zoom / Perbesaran</div>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="zoom_in">
+                            <div class="label-container">
+                                <label>Perbesar (Zoom In)</label>
+                                <span class="param-value" id="zoomin-val">1.5x</span>
+                            </div>
+                            <input type="range" name="zoom_level" class="forge-range" min="1.1" max="5.0" step="0.1" value="1.5" oninput="document.getElementById('zoomin-val').innerText = this.value + 'x'">
+                            <button type="submit" class="btn btn-primary">🔍 Perbesar</button>
+                        </form>
+                        <form action="/" method="POST" class="parameter-input">
+                            <input type="hidden" name="action" value="zoom_out">
+                            <div class="label-container">
+                                <label>Perkecil (Zoom Out)</label>
+                                <span class="param-value" id="zoomout-val">2.0x</span>
+                            </div>
+                            <input type="range" name="zoom_level" class="forge-range" min="1.1" max="5.0" step="0.1" value="2.0" oninput="document.getElementById('zoomout-val').innerText = this.value + 'x'">
+                            <button type="submit" class="btn btn-primary">🔎 Perkecil</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="analisis">
+                    <div class="parameter-group">
+                        <div class="parameter-group-title">📊 Analisis Frekuensi & Statistik</div>
+                        <div class="control-grid">
+                            <form action="/" method="POST"><input type="hidden" name="action" value="fourier"><button type="submit" class="btn">🌌 Fourier Spectrum</button></form>
+                            <form action="/" method="POST"><input type="hidden" name="action" value="histogram"><button type="submit" class="btn">📊 Histogram Warna</button></form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <main class="stage-area">
+            {% if result_image %}
+                <div class="view-compare-toggle">
+                    <button type="button" class="btn-toggle active" id="btn-after" onclick="toggleView('after')">✨ Hasil Editan (After)</button>
+                    <button type="button" class="btn-toggle" id="btn-before" onclick="toggleView('before')">📷 Gambar Asli (Before)</button>
+                </div>
+            {% endif %}
+
+            <div class="canvas-container">
+                {% if result_image %}
+                    <img src="{{ result_image }}" alt="Workspace Canvas" id="main-image">
+                    
+                    <script>
+                        const imgOriginal = "{{ original_image }}";
+                        const imgResult = "{{ result_image }}";
+                        
+                        function toggleView(type) {
+                            const imgEl = document.getElementById('main-image');
+                            const btnBefore = document.getElementById('btn-before');
+                            const btnAfter = document.getElementById('btn-after');
+                            
+                            if (type === 'before') {
+                                imgEl.src = imgOriginal;
+                                btnBefore.classList.add('active');
+                                btnAfter.classList.remove('active');
+                            } else {
+                                imgEl.src = imgResult;
+                                btnAfter.classList.add('active');
+                                btnBefore.classList.remove('active');
+                            }
+                        }
+                    </script>
+                {% elif original_image %}
+                    <img src="{{ original_image }}" alt="Workspace Canvas" id="main-image">
+                {% else %}
+                    <div class="stage-dropzone" onclick="document.getElementById('upload-input').click()">
+                        <p style="color: #cbd5e1; font-weight: 600; font-size: 14px;">✨ Belum ada foto dimasukkan.</p>
+                        <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Klik tombol "Post Image" di atas atau area ini untuk memproses citra</p>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+
+    </div>
+
+    <footer>
+        <div class="status-active">🟢 Studio Siap Menjalankan Operasi Citra</div>
+        <div>
+            {% if image_info %}
+                Dimensi: **{{ image_info.width }}×{{ image_info.height }} px** | Ukuran: **{{ image_info.size_kb }} KB**
+            {% else %}
+                Dimensi: 0×0 px | Ukuran: 0 KB
+            {% endif %}
+        </div>
+    </footer>
+
+    <script>
+        function switchTab(event, tabId) {
+            // Sembunyikan semua tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            });
+            
+            // Hilangkan status aktif pada semua link tombol tab
+            document.querySelectorAll('.tab-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Tampilkan tab yang dipilih
+            const targetContent = document.getElementById(tabId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+                targetContent.style.display = 'flex'; // Menggunakan flexvertikal di dalam sidebar
+            }
+            
+            // Aktifkan tombol yang sedang diklik
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
